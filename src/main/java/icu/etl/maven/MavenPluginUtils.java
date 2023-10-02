@@ -1,9 +1,10 @@
 package icu.etl.maven;
 
 import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
+import java.io.IOException;
 
+import icu.etl.util.FileUtils;
+import icu.etl.util.StringUtils;
 import org.apache.maven.plugin.MojoFailureException;
 import org.apache.maven.plugin.logging.Log;
 
@@ -23,24 +24,9 @@ public class MavenPluginUtils {
      */
     public static boolean isJDK(String name) {
         return name.startsWith("JDK") //
-                && name.endsWith(".java") //
-                && isNumber(name.substring("JDK".length(), name.length() - ".java".length()) //
+                && name.endsWith(".txt") //
+                && StringUtils.isNumber(name.substring("JDK".length(), name.length() - ".txt".length()) //
         );
-    }
-
-    /**
-     * 判断字符串 {@code str} 是否是整数
-     *
-     * @param str 字符串
-     * @return true表示字符串是整数
-     */
-    public static boolean isNumber(String str) {
-        try {
-            Integer.parseInt(str);
-            return true;
-        } catch (NumberFormatException e) {
-            return false;
-        }
     }
 
     /**
@@ -50,7 +36,7 @@ public class MavenPluginUtils {
      * @return 版本号
      */
     public static int parseVersion(String name) {
-        String str = name.substring("JDK".length(), name.length() - ".java".length());
+        String str = name.substring("JDK".length(), name.length() - ".txt".length());
         return Integer.parseInt(str);
     }
 
@@ -64,50 +50,10 @@ public class MavenPluginUtils {
      */
     public static void copyfile(File file, File copy, Log log) throws MojoFailureException {
         log.info("复制文件 " + file.getAbsolutePath() + " 到 " + copy.getAbsolutePath() + " ..");
-
-        FileOutputStream out = null;
         try {
-            out = new FileOutputStream(copy);
-            writefile(file, out);
-        } catch (Exception e) {
-            throw new MojoFailureException(copy.getAbsolutePath(), e);
-        } finally {
-            try {
-                if (out != null) {
-                    out.close();
-                }
-            } catch (Exception e) {
-                throw new MojoFailureException(copy.getAbsolutePath(), e);
-            }
-        }
-    }
-
-    /**
-     * 读取文件 {@code file} 中的内容，并写入到输出流 {@code out} 中
-     *
-     * @param file 文件
-     * @param out  输出流
-     * @throws MojoFailureException 发生错误
-     */
-    public static void writefile(File file, FileOutputStream out) throws MojoFailureException {
-        FileInputStream in = null;
-        try {
-            in = new FileInputStream(file);
-            byte[] bytes = new byte[1024];
-            for (int read; (read = in.read(bytes)) != -1; ) {
-                out.write(bytes, 0, read);
-            }
-            out.flush();
-        } catch (Exception e) {
-            throw new MojoFailureException("", e);
-        } finally {
-            try {
-                if (in != null) {
-                    in.close();
-                }
-            } catch (Exception e) {
-                throw new MojoFailureException(file.getAbsolutePath(), e);
-            }
+            FileUtils.copy(file, copy);
+        } catch (IOException e) {
+            throw new MojoFailureException(file.getAbsolutePath(), e);
         }
     }
 

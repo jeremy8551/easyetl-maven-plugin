@@ -2,14 +2,15 @@ package icu.etl.maven;
 
 import java.io.File;
 import java.io.FilenameFilter;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
-import java.util.Iterator;
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 
+import icu.etl.util.FileUtils;
+import icu.etl.util.StringUtils;
 import org.apache.maven.plugin.AbstractMojo;
 import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugin.MojoFailureException;
@@ -69,7 +70,7 @@ public class DesignateJDK extends AbstractMojo {
         log.info("资源文件目录: " + resource.getAbsolutePath());
 
         // 搜索 JDK适配器实现类所在的目录
-        File dir = MavenPluginUtils.search(resource, "JDK", ".java");
+        File dir = MavenPluginUtils.search(resource, "JDK", ".txt");
         if (dir == null) {
             throw new MojoFailureException("适配JDK的方言类: JDK*.java 不存在!");
         }
@@ -90,19 +91,42 @@ public class DesignateJDK extends AbstractMojo {
             }
         });
 
-        List<File> copyfiles = this.copyfiles(this.mainSourceDir, impls, log);
+        List<File> copyclasses = this.copyfiles(this.mainSourceDir, impls, log); // 复制方言接口的实现类
+        this.changeIgnorefile(copyclasses);
+    }
 
-        /**
-         * 因为JDK版本不同，对应的方言实现类也不同
-         * 所以需要将方言接口的实现类写入git忽略提交清单中，防止自动提交，只保留编译后的class文件
-         */
+    /**
+     * 因为JDK版本不同，对应的方言实现类也不同
+     * 所以需要将方言接口的实现类写入 .gitignore 中，防止自动提交，只保留编译后的class文件
+     *
+     * @param copyfiles 复制的方言实现类文件
+     * @throws MojoFailureException 修改文件发生错误
+     */
+    private void changeIgnorefile(List<File> copyfiles) throws MojoFailureException {
         File ignorefile = new File(this.mainSourceDir, ".gitignore");
         if (ignorefile.exists() && ignorefile.isFile()) {
-            Set<String> patterns = this.getPatterns(copyfiles, this.projectBasedir);
+            getLog().info(ignorefile.getAbsolutePath());
+            Set<String> patterns = JavaFileUtils.readPatterns(copyfiles, this.projectBasedir);
             Set<String> rules = JavaFileUtils.readIgnorefile(ignorefile, this.sourceEncoding);
             patterns.removeAll(rules);
-            for (String str : patterns) {
-                
+
+            if (patterns.isEmpty()) {
+                return;
+            }
+
+            try {
+                String ls = FileUtils.readLineSeparator(ignorefile);
+                StringBuilder buf = new StringBuilder();
+                buf.append(ls);
+                buf.append("### 用于过滤JDK适配器方言接口的实现类 ###").append(ls);
+                for (String pattern : patterns) {
+                    buf.append(pattern).append(ls);
+                }
+                buf.append(ls);
+                getLog().info("在规则文件 " + ignorefile.getAbsolutePath() + " 配置如下规则: \n" + buf);
+                FileUtils.write(ignorefile, this.sourceEncoding, true, buf);
+            } catch (IOException e) {
+                throw new MojoFailureException(ignorefile.getAbsolutePath(), e);
             }
         }
     }
@@ -113,6 +137,7 @@ public class DesignateJDK extends AbstractMojo {
      * @param dir   主要源文件的目录, src/main/java
      * @param files JDK适配器方言接口实现类
      * @param log   日志输出接口
+     * @return
      * @throws MojoFailureException 发生错误
      */
     private List<File> copyfiles(File dir, File[] files, Log log) throws MojoFailureException {
@@ -121,9 +146,9 @@ public class DesignateJDK extends AbstractMojo {
 
         List<File> list = new ArrayList<File>(files.length);
         for (File file : files) {
-            int i = MavenPluginUtils.parseVersion(file.getName());
-            if (i <= major) {
-                log.info(file.getAbsolutePath() + ", 对应JDK的大版本号是: " + i);
+            int version = MavenPluginUtils.parseVersion(file.getName());
+            if (version <= major) {
+                log.info(file.getAbsolutePath() + ", 对应JDK的大版本号是: " + version);
 
                 String packageName = JavaFileUtils.readPackageName(file, this.sourceEncoding);
                 if (packageName == null) {
@@ -131,7 +156,7 @@ public class DesignateJDK extends AbstractMojo {
                     continue;
                 }
 
-                File newfile = new File(dir, packageName.replace('.', '/') + "/" + file.getName());
+                File newfile = new File(dir, packageName.replace('.', '/') + "/" + FileUtils.changeFilenameExt(file.getName(), "java"));
                 if (newfile.exists() && !newfile.isFile()) {
                     throw new MojoFailureException("JDK适配的方言实现类的目标错误: " + newfile.getAbsolutePath() + " 不是一个有效文件!");
                 }
@@ -166,35 +191,6 @@ public class DesignateJDK extends AbstractMojo {
         return list;
     }
 
-    public Set<String> getPatterns(List<File> files, File root) {
-        Set<String> set = new LinkedHashSet<String>();
-
-        // 计算类
-
-        for (File file : files) {
-            String name = file.getName();
-
-            List<String> list = new ArrayList<String>();
-            list.add(name.substring(0, "JDK".length()) + "*" + name.substring(name.lastIndexOf('.'))); // JDK*.java
-            File parent = file.getParentFile();
-            while (parent != null && !parent.equals(root)) {
-                list.add(0, parent.getName());
-                parent = parent.getParentFile();
-            }
-
-            StringBuilder buf = new StringBuilder();
-            for (Iterator<String> it = list.iterator(); it.hasNext(); ) {
-                buf.append(it.next());
-                if (it.hasNext()) {
-                    buf.append("/");
-                }
-            }
-            set.add(buf.toString());
-        }
-
-        return set;
-    }
-
     /**
      * JDK大版本号，如: 5, 6, 7, 8
      *
@@ -206,7 +202,7 @@ public class DesignateJDK extends AbstractMojo {
         if (array.length <= 1 || array.length > 3) {
             throw new UnsupportedOperationException(this.mavenCompilerSource);
         } else {
-            if (MavenPluginUtils.isNumber(array[1])) {
+            if (StringUtils.isNumber(array[1])) {
                 return Integer.parseInt(array[1]);
             } else {
                 throw new MojoFailureException("解析Java编译器版本号错误: " + this.mavenCompilerSource);
