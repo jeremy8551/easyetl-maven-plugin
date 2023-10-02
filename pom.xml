@@ -61,6 +61,15 @@
     </developers>
 
     <dependencies>
+        <!-- 测试工具包 -->
+        <dependency>
+            <groupId>junit</groupId>
+            <artifactId>junit</artifactId>
+            <version>4.12</version>
+            <scope>test</scope>
+            <optional>true</optional>
+        </dependency>
+
         <dependency>
             <groupId>org.apache.maven</groupId>
             <artifactId>maven-plugin-api</artifactId>
@@ -77,6 +86,12 @@
     <build>
         <finalName>easyetl-maven-plugin</finalName>
         <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-plugin-plugin</artifactId>
+                <version>3.5</version>
+            </plugin>
+
             <!-- 单元测试插件 -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
