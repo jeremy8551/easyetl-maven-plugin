@@ -103,12 +103,18 @@ public class DesignateJDK extends AbstractMojo {
      * @throws MojoFailureException 修改文件发生错误
      */
     private void changeIgnorefile(List<File> copyfiles) throws MojoFailureException {
-        File ignorefile = new File(this.mainSourceDir, ".gitignore");
+        File ignorefile = new File(this.projectBasedir, ".gitignore");
         if (ignorefile.exists() && ignorefile.isFile()) {
-            getLog().info(ignorefile.getAbsolutePath());
+            getLog().info("配置规则文件: " + ignorefile.getAbsolutePath());
+
             Set<String> patterns = JavaFileUtils.readPatterns(copyfiles, this.projectBasedir);
+//            getLog().info("patterns: " + StringUtils.toString(patterns));
+
             Set<String> rules = JavaFileUtils.readIgnorefile(ignorefile, this.sourceEncoding);
+//            getLog().info("rules: " + StringUtils.toString(rules));
+
             patterns.removeAll(rules);
+//            getLog().info("left rule: " + StringUtils.toString(patterns));
 
             if (patterns.isEmpty()) {
                 return;
@@ -174,7 +180,6 @@ public class DesignateJDK extends AbstractMojo {
                         } else {
                             MavenPluginUtils.copyfile(file, newfile, log);
                         }
-                        list.add(file);
                     }
                 } else {
                     try {
@@ -184,8 +189,8 @@ public class DesignateJDK extends AbstractMojo {
                     }
 
                     MavenPluginUtils.copyfile(file, newfile, log);
-                    list.add(file);
                 }
+                list.add(newfile);
             }
         }
         return list;
