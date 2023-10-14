@@ -2,26 +2,21 @@
          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
+    <parent>
+        <groupId>icu.etl</groupId>
+        <artifactId>easyetl-parent</artifactId>
+        <version>1.0.0</version>
+        <relativePath>../easyetl-parent</relativePath>
+    </parent>
 
     <!-- 项目信息 -->
-    <groupId>icu.etl</groupId>
     <artifactId>easyetl-maven-plugin</artifactId>
-    <version>1.0.0</version>
+    <version>2.0.0</version>
     <packaging>maven-plugin</packaging>
+
     <name>easyetl-maven-plugin</name>
     <url>https://github.com/jeremy8551/easyetl-maven-plugin/</url>
     <description>easyetl maven plugin</description>
-
-    <!-- 插件属性 -->
-    <properties>
-        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <maven.compiler.source>1.8</maven.compiler.source>
-        <maven.compiler.target>1.8</maven.compiler.target>
-        <maven.compiler.charset>UTF-8</maven.compiler.charset>
-        <maven.test.skip>true</maven.test.skip>
-        <maven.javadoc.failOnError>false</maven.javadoc.failOnError>
-        <maven.javadoc.skip>false</maven.javadoc.skip>
-    </properties>
 
     <!-- Apache Licene 2.0 开源软件许可证 -->
     <licenses>
@@ -61,19 +56,10 @@
     </developers>
 
     <dependencies>
-        <!-- 测试工具包 -->
-        <dependency>
-            <groupId>junit</groupId>
-            <artifactId>junit</artifactId>
-            <version>4.12</version>
-            <scope>test</scope>
-            <optional>true</optional>
-        </dependency>
-
         <dependency>
             <groupId>icu.etl</groupId>
             <artifactId>easyetl-tool</artifactId>
-            <version>1.0.0</version>
+            <scope>compile</scope>
         </dependency>
 
         <dependency>
@@ -90,156 +76,13 @@
     </dependencies>
 
     <build>
-        <finalName>easyetl-maven-plugin</finalName>
         <plugins>
+            <!-- 插件开发依赖 -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-plugin-plugin</artifactId>
-                <version>3.5</version>
-            </plugin>
-
-            <!-- 单元测试插件 -->
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-surefire-plugin</artifactId>
-                <version>2.12.4</version>
-                <configuration>
-                    <skip>${maven.test.skip}</skip>
-                </configuration>
-            </plugin>
-
-            <!-- 编译插件 -->
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-compiler-plugin</artifactId>
-                <version>3.8.1</version>
-                <configuration>
-                    <source>${maven.compiler.source}</source>
-                    <target>${maven.compiler.target}</target>
-                </configuration>
-            </plugin>
-
-            <!-- 生成 Javadoc 的jar文件 -->
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-javadoc-plugin</artifactId>
-                <version>3.5.0</version>
-                <executions>
-                    <execution>
-                        <phase>package</phase>
-                        <goals>
-                            <goal>jar</goal>
-                        </goals>
-                    </execution>
-                </executions>
-                <configuration>
-                    <!-- 配置不需要校验的包名,用半角逗号分隔 -->
-                    <!-- https://maven.apache.org/plugins/maven-javadoc-plugin/examples/exclude-package-names.html -->
-                    <excludePackageNames>icu.jsch.*,icu.apache.*</excludePackageNames>
-                    <tags>
-                        <tag>
-                            <!-- https://maven.apache.org/plugins/maven-javadoc-plugin/examples/tag-configuration.html -->
-                            <name>createtime</name> <!-- 自定义 @createtime 标记，屏蔽生成javadoc时的错误信息 -->
-                            <placement>a</placement> <!-- 指定标签的放置位置，a表示能在所有位置使用 -->
-                            <head>创建时间:</head> <!-- 定义标签的前缀，例如 "作者:" 或 "版本:" -->
-                        </tag>
-                    </tags>
-                    <!--                    <show>private</show>-->
-                    <!--                    <nohelp>true</nohelp>-->
-                    <!--                    <charset>UTF-8</charset>-->
-                    <!--                    <encoding>UTF-8</encoding>-->
-                    <!--                    <docencoding>UTF-8</docencoding>-->
-                    <!--                    <additionalparam>-Xdoclint:none</additionalparam>-->
-                </configuration>
             </plugin>
         </plugins>
     </build>
-
-    <profiles>
-        <!-- 将deploy配置作为一个profile，在执行deploy命令时激活这个profile: clean deploy -P release -->
-        <profile>
-            <id>release</id>
-            <build>
-                <plugins>
-                    <!-- 插件用于生成源码jar文件 -->
-                    <plugin>
-                        <groupId>org.apache.maven.plugins</groupId>
-                        <artifactId>maven-source-plugin</artifactId>
-                        <version>3.2.1</version>
-                        <executions>
-                            <execution>
-                                <phase>package</phase>
-                                <goals>
-                                    <goal>jar-no-fork</goal>
-                                </goals>
-                            </execution>
-                        </executions>
-                    </plugin>
-
-                    <!-- 插件用于生成Javadoc的jar文件 -->
-                    <plugin>
-                        <groupId>org.apache.maven.plugins</groupId>
-                        <artifactId>maven-javadoc-plugin</artifactId>
-                        <version>3.4.1</version>
-                        <executions>
-                            <execution>
-                                <phase>package</phase>
-                                <goals>
-                                    <goal>jar</goal>
-                                </goals>
-                                <configuration>
-                                    <doclint>none</doclint> <!-- 禁用DocLint检查,屏蔽警告和报错信息 -->
-                                </configuration>
-                            </execution>
-                        </executions>
-                    </plugin>
-
-                    <!-- GPG签名插件,对项目最后生成的jar包进行签名 -->
-                    <plugin>
-                        <groupId>org.apache.maven.plugins</groupId>
-                        <artifactId>maven-gpg-plugin</artifactId>
-                        <version>3.0.1</version>
-                        <executions>
-                            <execution>
-                                <phase>verify</phase> <!-- 验证阶段 -->
-                                <goals>
-                                    <goal>sign</goal> <!-- 插件目标: 在验证阶段执行 GPG 签名操作 -->
-                                </goals>
-                            </execution>
-                        </executions>
-                    </plugin>
-
-                    <!-- sonatype插件，用于登录验证、上传jar到sonatype的maven仓库 -->
-                    <plugin>
-                        <groupId>org.sonatype.plugins</groupId>
-                        <artifactId>nexus-staging-maven-plugin</artifactId>
-                        <version>1.6.7</version>
-                        <extensions>true</extensions>
-                        <configuration>
-                            <serverId>ossrh</serverId>
-                            <!-- 这里的 https://s01.oss.sonatype.org/ 是生成 sonatype 的issues工单时, 机器人评论的那个地址-->
-                            <nexusUrl>https://s01.oss.sonatype.org/</nexusUrl>
-                            <autoReleaseAfterClose>true</autoReleaseAfterClose>
-                        </configuration>
-                    </plugin>
-                </plugins>
-            </build>
-
-            <!-- 项目jar包分发管理信息 -->
-            <distributionManagement>
-                <snapshotRepository>
-                    <!-- 快照版本 -->
-                    <id>ossrh</id>
-                    <url>https://s01.oss.sonatype.org/content/repositories/snapshots/</url>
-                    <!-- 这里的 https://s01.oss.sonatype.org/ 是生成 sonatype 的issues工单时, 机器人评论的那个地址-->
-                </snapshotRepository>
-                <repository>
-                    <!-- 发布正式版 -->
-                    <id>ossrh</id>
-                    <url>https://s01.oss.sonatype.org/service/local/staging/deploy/maven2/</url>
-                </repository>
-            </distributionManagement>
-        </profile>
-    </profiles>
 
 </project>

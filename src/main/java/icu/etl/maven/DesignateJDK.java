@@ -55,6 +55,15 @@ public class DesignateJDK extends AbstractMojo {
     private File projectBasedir;
 
     public void execute() throws MojoExecutionException, MojoFailureException {
+        try {
+            this.run();
+        } catch (Throwable e) {
+            getLog().error("easyetl 插件发生错误", e);
+            throw new RuntimeException(e);
+        }
+    }
+
+    private void run() throws MojoFailureException, IOException {
         Log log = getLog();
         log.info("插件根据JDK版本，自动切换到对应的方言类!");
         log.info("项目的根目录: " + this.projectBasedir.getAbsolutePath());
@@ -102,7 +111,7 @@ public class DesignateJDK extends AbstractMojo {
      * @param copyfiles 复制的方言实现类文件
      * @throws MojoFailureException 修改文件发生错误
      */
-    private void changeIgnorefile(List<File> copyfiles) throws MojoFailureException {
+    private void changeIgnorefile(List<File> copyfiles) throws MojoFailureException, IOException {
         File ignorefile = new File(this.projectBasedir, ".gitignore");
         if (ignorefile.exists() && ignorefile.isFile()) {
             getLog().info("配置规则文件: " + ignorefile.getAbsolutePath());
@@ -120,20 +129,16 @@ public class DesignateJDK extends AbstractMojo {
                 return;
             }
 
-            try {
-                String ls = FileUtils.readLineSeparator(ignorefile);
-                StringBuilder buf = new StringBuilder();
-                buf.append(ls);
-                buf.append("### 用于过滤JDK适配器方言接口的实现类 ###").append(ls);
-                for (String pattern : patterns) {
-                    buf.append(pattern).append(ls);
-                }
-                buf.append(ls);
-                getLog().info("在规则文件 " + ignorefile.getAbsolutePath() + " 配置如下规则: \n" + buf);
-                FileUtils.write(ignorefile, this.sourceEncoding, true, buf);
-            } catch (IOException e) {
-                throw new MojoFailureException(ignorefile.getAbsolutePath(), e);
+            String ls = FileUtils.readLineSeparator(ignorefile);
+            StringBuilder buf = new StringBuilder();
+            buf.append(ls);
+            buf.append("### 用于过滤JDK适配器方言接口的实现类 ###").append(ls);
+            for (String pattern : patterns) {
+                buf.append(pattern).append(ls);
             }
+            buf.append(ls);
+            getLog().info("在规则文件 " + ignorefile.getAbsolutePath() + " 配置如下规则: \n" + buf);
+            FileUtils.write(ignorefile, this.sourceEncoding, true, buf);
         }
     }
 
@@ -146,7 +151,7 @@ public class DesignateJDK extends AbstractMojo {
      * @return
      * @throws MojoFailureException 发生错误
      */
-    private List<File> copyfiles(File dir, File[] files, Log log) throws MojoFailureException {
+    private List<File> copyfiles(File dir, File[] files, Log log) throws MojoFailureException, IOException {
         int major = this.getJdkMajor(); // JDK大版本号，如: 5, 6, 7, 8 ..
         log.info("当前Java编译器的大版本号是 " + major);
 
@@ -182,12 +187,7 @@ public class DesignateJDK extends AbstractMojo {
                         }
                     }
                 } else {
-                    try {
-                        newfile.createNewFile();
-                    } catch (Exception e) {
-                        throw new MojoFailureException("JDK适配的方言实现类的目标错误: 创建文件 " + newfile.getAbsolutePath() + " 失败!", e);
-                    }
-
+                    newfile.createNewFile();
                     MavenPluginUtils.copyfile(file, newfile, log);
                 }
                 list.add(newfile);
@@ -204,15 +204,23 @@ public class DesignateJDK extends AbstractMojo {
      */
     public int getJdkMajor() throws MojoFailureException {
         String[] array = this.mavenCompilerSource.split("\\.");
-        if (array.length <= 1 || array.length > 3) {
-            throw new UnsupportedOperationException(this.mavenCompilerSource);
-        } else {
+        if (array.length == 1) {
+            if (StringUtils.isNumber(array[0])) {
+                return Integer.parseInt(array[0]);
+            } else {
+                throw new MojoFailureException("解析Java编译器版本号错误: " + this.mavenCompilerSource);
+            }
+        }
+
+        if (array.length == 2 || array.length == 3) {
             if (StringUtils.isNumber(array[1])) {
                 return Integer.parseInt(array[1]);
             } else {
                 throw new MojoFailureException("解析Java编译器版本号错误: " + this.mavenCompilerSource);
             }
         }
+
+        throw new UnsupportedOperationException(this.mavenCompilerSource);
     }
 
 }
